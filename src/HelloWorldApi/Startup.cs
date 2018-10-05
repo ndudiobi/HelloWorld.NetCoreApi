@@ -1,28 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace HelloWorldApi
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
-        {
-            Configuration = configuration;
-        }
+        private const string DefaultCorsPolicyName = "CORS";
 
-        public IConfiguration Configuration { get; }
-
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddCors(options =>
+            {
+                options.DefaultPolicyName = DefaultCorsPolicyName;
+                options.AddPolicy(DefaultCorsPolicyName,
+                                  builder =>
+                                  {
+                                      builder.AllowAnyHeader()
+                                             .AllowAnyMethod()
+                                             .AllowAnyOrigin()
+                                             .AllowCredentials();
+                                  });
+            });
+
             services.AddMvc();
         }
 
@@ -34,7 +35,15 @@ namespace HelloWorldApi
                 app.UseDeveloperExceptionPage();
             }
 
+            app.UseCors(DefaultCorsPolicyName);
             app.UseMvc();
+
+            app.Run(async context =>
+            {
+                var message = context.Request.Query.TryGetValue("name", out var name) ? $"Hello {name}!" : "Hello World!";
+
+                await context.Response.WriteAsync(message);
+            });
         }
     }
 }
